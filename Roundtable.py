@@ -20,7 +20,7 @@ class Roundtable(object):
         #header += "\nWhen you think the conversation is finished and everybody can start working, output [END]. Do not output [END] unless everyone has explicitly reached a consensus."
         self.broadcast(header)
     
-    def roundRobin(self, order="sequential"):
+    def discuss(self, order="sequential"):
         doEnd = True
         if order == "sequential":
             gsl = self.participants
@@ -42,11 +42,11 @@ class Roundtable(object):
                     doEnd = False
         return doEnd
     
-    def roundRobinTillEnd(self, timeout=5):
+    def discussTillEnd(self, timeout=5):
         doEnd = False
         i = 0
         while not doEnd and i < timeout:
-            doEnd = self.roundRobin()
+            doEnd = self.discuss()
             i += 1
         print(f"Meeting ended after {i} exchanges.")
         return i
