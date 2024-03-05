@@ -37,18 +37,18 @@ class Roundtable(object):
                     continue
                 listener.put(header_response)
             if doEnd:
-                reply = speaker.silentAsk("Do you think this meeting has come to a conclusion and everybody can go on with their own work? Answer [YES] or [NO].")
+                reply = speaker.ask("Do you think this meeting has come to a conclusion and you can continue with your work? Answer [YES] or [NO].")
                 if "[YES]" not in reply:
                     doEnd = False
         return doEnd
     
-    def discussTillEnd(self, timeout=5):
+    def discussTillEnd(self, timeout=3):
         doEnd = False
         i = 0
         while not doEnd and i < timeout:
             doEnd = self.discuss()
             i += 1
-        print(f"Meeting ended after {i} exchanges.")
+        print(f"Meeting ended after {i} exchange(s).")
         return i
 
     def individualWork(self):
@@ -58,15 +58,42 @@ class Roundtable(object):
             if "[NONE]" in task:
                 results.append(None)
                 continue
-            response = agent.ask("Now, implement your solution to the task:\n")
+
+            response = agent.ask("Implement your solution to the task. If you need to run a python program to observe its output, put <RUN_PYTHON> at the start of the code and <END_PYTHON> at the end of the code, and the system will run it for you and return the results. Now, complete your task:\n")
+            tries = 0
+            while ("<RUN_PYTHON>" in response and not "<END_PYTHON>" in response) or \
+                  (not "<RUN_PYTHON>" in response and "<END_PYTHON>" in response):
+                tries += 1
+                if tries > 2:
+                    response += "\n[SYSTEM]: The proposed code is not run because it is not formatted correctly.\n"
+                    break
+                response = agent.ask("To run a python program, you have to include both the <RUN_PYTHON> and the <END_PYTHON> markers, but you only included one. Try again by typing the correct implementation below:")
+            if "<RUN_PYTHON>" in response and "<END_PYTHON>" in response:
+                code = (response.split("<RUN_PYTHON>"))[1].split("<END_PYTHON>")[0]
+                if "```" in code:
+                    code = code.split("```")[1]
+                code_output = self.runCode(code)
+                response += "\nThe code above is run, and it gave the following output:\n" + code_output
             results.append(response)
+
         for listener in self.participants:
             for i, response in enumerate(results):
-                if response is None:
-                    continue
                 contributor = self.participants[i].name
-                listener.put(f"{contributor} gave the following implementation for his task:\n {response}")
+                if response is None:
+                    listener.put(f"{contributor} did not think he has to make an implementation.")
+                else:
+                    listener.put(f"{contributor} gave the following implementation for his task:\n {response}")
     
     def broadcast(self, msg):
         for agent in self.participants:
             agent.put(msg)
+
+    def runCode(self, code):
+        permission = input(("Running code:\n\n" + code + "\n\n", "Enter '1' to grant access:\t"))
+        if permission != "1":
+            return None
+        try:
+            output = exec(code)
+            return str(output)
+        except Exception as e:
+            return str(e)
