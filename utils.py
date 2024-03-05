@@ -1,6 +1,6 @@
 import openai, os
 
-sk_key = os.environ.get("OPEN_AI_KEY")
+sk_key = os.environ.get("OPENAI_API_KEY")
 openai.api_key = sk_key
 
 def getCompletionChatGPT(prompt):
